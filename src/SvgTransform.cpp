@@ -149,3 +149,9 @@ bool SvgTransform::parseTransform(const QString& transformStr)
 
     return true;  // 所有变换解析成功
 }
+
+void SvgTransform::parseTransformString(const QString& transformStr)
+{
+    // 直接复用已实现的parseTransform逻辑
+    parseTransform(transformStr);
+}

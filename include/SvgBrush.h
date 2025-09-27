@@ -3,142 +3,106 @@
 
 #include <QBrush>
 #include <QColor>
-#include <QPointF>
 #include <QList>
+#include <QPointF>
 
-class SvgBrush {
+// 渐变停止点类
+class SvgGradientStop
+{
+public:
+    SvgGradientStop() : offset(0.0) {}
+    ~SvgGradientStop() = default;
+
+    qreal getOffset() const;
+    void setOffset(qreal offset);
+
+    QColor getColor() const;
+    void setColor(const QColor& color);
+    void setColor(const QString& colorStr);
+
+private:
+    qreal offset;
+    QColor color;
+};
+
+// 画笔基类（抽象类）
+class SvgBrush
+{
 public:
     enum BrushType {
         Solid,
         LinearGradient,
-        RadialGradient,
-        Pattern
+        RadialGradient
     };
 
+    SvgBrush() = default;
     virtual ~SvgBrush() = default;
-    BrushType type() const { return mType; }
 
-    virtual QBrush toQBrush() const = 0;
+    // 克隆方法
     virtual SvgBrush* clone() const = 0;
-
-protected:
-    explicit SvgBrush(BrushType type) : mType(type) {}
-
-private:
-    BrushType mType;
+    // 转换为Qt画笔
+    virtual QBrush toQBrush() const = 0;
+    // 获取画笔类型
+    virtual BrushType type() const = 0;
 };
 
-class SvgGradientStop {
+// 纯色画笔（子类）
+class SvgSolidBrush : public SvgBrush
+{
 public:
-    qreal offset;   // 成员变量
-    QColor color;   // 成员变量
+    SvgSolidBrush() : mColor(Qt::black) {}
+    SvgSolidBrush(const QColor& color) : mColor(color) {}
+    ~SvgSolidBrush() override = default;
 
-    SvgGradientStop(qreal offset = 0.0, const QColor& color = Qt::black)
-        : offset(offset), color(color) {}
-
-    qreal getOffset() const;
-    void setOffset(qreal offset);
-    QColor getColor() const;
-    void setColor(const QColor& color);
-    void setColor(const QString& colorStr);
-};
-
-class SvgSolidBrush : public SvgBrush {
-public:
-    SvgSolidBrush() : SvgBrush(BrushType::Solid) {}
-    explicit SvgSolidBrush(const QColor& color)
-        : SvgBrush(BrushType::Solid), mColor(color) {}
-    explicit SvgSolidBrush(const QString& colorStr)
-        : SvgBrush(BrushType::Solid) {
-        mColor.setNamedColor(colorStr);
-    }
-
-    void setColor(const QColor& color) { mColor = color; }
-    void setColor(const QString& colorStr) { mColor.setNamedColor(colorStr); }
-    QColor color() const { return mColor; }
-
+    SvgBrush* clone() const override { return new SvgSolidBrush(mColor); }
     QBrush toQBrush() const override { return QBrush(mColor); }
-    SvgSolidBrush* clone() const override {
-        return new SvgSolidBrush(*this);
-    }
+    BrushType type() const override { return Solid; }
+
+    QColor color() const { return mColor; }
+    void setColor(const QColor& color) { mColor = color; }
 
 private:
     QColor mColor;
 };
 
-class SvgLinearGradientBrush : public SvgBrush {
+// 线性渐变画笔（子类）
+class SvgLinearGradientBrush : public SvgBrush
+{
 public:
-    SvgLinearGradientBrush() : SvgBrush(BrushType::LinearGradient) {}
-    SvgLinearGradientBrush(const QPointF& start, const QPointF& end)
-        : SvgBrush(BrushType::LinearGradient), mStart(start), mEnd(end) {}
+    SvgLinearGradientBrush() : mStart(QPointF(0,0)), mEnd(QPointF(1,1)) {}
+    ~SvgLinearGradientBrush() override = default;
 
-    void setStart(const QPointF& start) { mStart = start; }
-    QPointF start() const { return mStart; }
-    void setEnd(const QPointF& end) { mEnd = end; }
-    QPointF end() const { return mEnd; }
-    void addStop(const SvgGradientStop& stop) { mStops.append(stop); }
-    void addStop(qreal offset, const QColor& color) {
-        mStops.append(SvgGradientStop(offset, color));
+    SvgBrush* clone() const override {
+        auto* copy = new SvgLinearGradientBrush();
+        copy->setStart(mStart);
+        copy->setEnd(mEnd);
+        copy->setStops(mStops);
+        return copy;
     }
-    QList<SvgGradientStop> stops() const { return mStops; }
 
     QBrush toQBrush() const override {
-        QLinearGradient gradient(mStart, mEnd);
+        QLinearGradient grad(mStart, mEnd);
         for (const auto& stop : mStops) {
-            gradient.setColorAt(stop.getOffset(), stop.getColor()); // 变量直接访问
+            grad.setColorAt(stop.getOffset(), stop.getColor());
         }
-        return QBrush(gradient);
+        return QBrush(grad);
     }
-    SvgLinearGradientBrush* clone() const override { // 返回自身类型
-        return new SvgLinearGradientBrush(*this);
-    }
+
+    BrushType type() const override { return LinearGradient; }
+
+    QPointF start() const { return mStart; }
+    void setStart(const QPointF& start) { mStart = start; }
+
+    QPointF end() const { return mEnd; }
+    void setEnd(const QPointF& end) { mEnd = end; }
+
+    QList<SvgGradientStop> stops() const { return mStops; }
+    void addStop(const SvgGradientStop& stop) { mStops.append(stop); }
+    void setStops(const QList<SvgGradientStop>& stops) { mStops = stops; }
 
 private:
     QPointF mStart;
     QPointF mEnd;
-    QList<SvgGradientStop> mStops;
-};
-
-class SvgRadialGradientBrush : public SvgBrush {
-public:
-    // 构造函数（现在是独立类的构造函数，非成员函数）
-    SvgRadialGradientBrush()
-        : SvgBrush(BrushType::RadialGradient), mRadius(0) {}
-    SvgRadialGradientBrush(const QPointF& center, qreal radius, const QPointF& focalPoint)
-        : SvgBrush(BrushType::RadialGradient),
-        mCenter(center),
-        mRadius(radius),
-        mFocalPoint(focalPoint) {}
-
-    // 成员函数
-    void setCenter(const QPointF& center) { mCenter = center; }
-    QPointF center() const { return mCenter; }
-    void setRadius(qreal radius) { mRadius = radius; }
-    qreal radius() const { return mRadius; }
-    void setFocalPoint(const QPointF& focalPoint) { mFocalPoint = focalPoint; }
-    QPointF focalPoint() const { return mFocalPoint; }
-    void addStop(const SvgGradientStop& stop) { mStops.append(stop); }
-    void addStop(qreal offset, const QColor& color) {
-        mStops.append(SvgGradientStop(offset, color));
-    }
-    QList<SvgGradientStop> stops() const { return mStops; }
-
-    // 重写纯虚函数
-    QBrush toQBrush() const override {
-        QRadialGradient gradient(mCenter, mRadius, mFocalPoint);
-        for (const auto& stop : mStops) {
-            gradient.setColorAt(stop.getOffset(), stop.getColor());
-        }
-        return QBrush(gradient);
-    }
-    SvgRadialGradientBrush* clone() const override {
-        return new SvgRadialGradientBrush(*this);
-    }
-
-private:
-    QPointF mCenter;
-    qreal mRadius;
-    QPointF mFocalPoint;
     QList<SvgGradientStop> mStops;
 };
 

@@ -1,4 +1,5 @@
 #include "SvgDocument.h"
+#include "SvgElementFactory.h"
 #include "SvgElement.h"
 #include "SvgTransform.h"
 #include "SvgStyle.h"
@@ -136,13 +137,17 @@ void SvgDocument::setDescription(const QString& description)
 
 bool SvgDocument::parseSvgElement(const QDomElement& domElement)
 {
-    // 这里将在后续实现中添加具体解析逻辑
-    return true;
+    // 调用工厂创建元素
+    SvgElement* element = SvgElementFactory::createElement(domElement);
+    if (element) {
+        mElements.append(element);
+        return true;
+    }
+    return false;
 }
 
 SvgElement* SvgDocument::createElementFromDom(const QDomElement& domElement)
 {
-    // 这里将在后续实现中添加具体元素创建逻辑
-    // 目前仅返回nullptr，后续会根据元素类型创建相应的SvgElement子类
-    return nullptr;
+    // 委托给工厂类创建元素（核心修改）
+    return SvgElementFactory::createElement(domElement);
 }

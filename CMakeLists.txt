@@ -52,6 +52,16 @@ set(HEADERS
 qt_add_executable(SvgRenderer
     ${SOURCES}
     ${HEADERS}
+    include/SvgElementFactory.h
+    include/SvgRect.h
+    include/SvgCircle.h
+    include/SvgText.h
+    include/SvgGroup.h
+    src/SvgElementFactory.cpp
+    src/SvgRect.cpp
+    src/SvgCircle.cpp
+    src/Svgtext.cpp
+    src/SvgGroup.cpp
 )
 
 # 包含头文件目录
