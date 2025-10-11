@@ -16,6 +16,7 @@ public:
     ~SvgDocument();
 
     bool load(const QString& fileName);
+    bool isValid() const { return mIsValid; }
     bool loadFromData(const QByteArray& data);
 
     void addElement(SvgElement* element);
@@ -24,6 +25,9 @@ public:
 
     QRectF viewBox() const;
     void setViewBox(const QRectF& viewBox);
+
+    //计算所有元素的最小包围盒（作为默认viewBox）
+    void calculateDefaultViewBox();
 
     QString title() const;
     void setTitle(const QString& title);
@@ -39,6 +43,7 @@ private:
     QRectF mViewBox;
     QString mTitle;
     QString mDescription;
+    bool mIsValid = false;
 };
 
 #endif // SVGDocument_H

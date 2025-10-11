@@ -1,6 +1,7 @@
 #include "SvgCircle.h"
 #include "SvgRenderer.h"
 #include <QPainter>
+#include <QDebug>
 
 SvgCircle::SvgCircle(const QString& id)
     : SvgElement(TypeShape, id)
@@ -8,6 +9,8 @@ SvgCircle::SvgCircle(const QString& id)
 
 void SvgCircle::draw(SvgRenderer* renderer) const
 {
+    qDebug() << "绘制圆形：cx=" << mCenter.x() << "cy=" << mCenter.y() << "r=" << mRadius;
+
     if (!renderer || !renderer->painter()) return;
 
     QPainter* painter = renderer->painter();

@@ -30,12 +30,13 @@ public:
     const SvgTransform& transform() const;
 
     virtual void setStyle(const SvgStyle& style);
-    const SvgStyle& style() const;
+    virtual const SvgStyle& style() const;
 
     virtual void draw(SvgRenderer* renderer) const = 0;
 
     virtual QRectF boundingBox() const;
     virtual void setBoundingBox(const QRectF& bbox);
+
 
 protected:
     ElementType mType;

@@ -9,9 +9,13 @@ class SvgStyle
 {
 public:
     SvgStyle();
-    SvgStyle(const SvgStyle& other);
+    SvgStyle(const SvgStyle&) = default;
     SvgStyle& operator=(const SvgStyle& other);
     ~SvgStyle();
+
+    QColor fill() const { return mFill; }
+    QColor stroke() const { return mStroke; }
+    qreal strokeWidth() const { return mStrokeWidth; }
 
     SvgPen* pen() const { return mPen; }
     void setPen(SvgPen* pen);
@@ -27,6 +31,9 @@ public:
 private:
     SvgPen* mPen;
     SvgBrush* mBrush;
+    QColor mFill;         // 填充颜色
+    QColor mStroke;       // 描边颜色
+    qreal mStrokeWidth;   // 描边宽度
 
     void copyFrom(const SvgStyle& other);
     void clear();

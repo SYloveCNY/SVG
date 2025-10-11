@@ -1,5 +1,6 @@
 #include "SvgElement.h"
 #include "SvgRenderer.h"
+#include <QDebug>
 
 // 构造函数
 SvgElement::SvgElement(ElementType type, const QString& id)
@@ -45,12 +46,25 @@ const SvgTransform& SvgElement::transform() const
 // 设置样式
 void SvgElement::setStyle(const SvgStyle& style)
 {
+    // 打印地址，确认mStyle是成员变量
+    qDebug() << "setStyle - 成员mStyle地址：" << &mStyle;
+    qDebug() << "setStyle - 传入style地址：" << &style;
+
     mStyle = style;
+
+    qDebug() << "setStyle后 - mStyle填充：" << mStyle.fill().name()
+             << "描边：" << mStyle.stroke().name()
+             << "宽度：" << mStyle.strokeWidth();
+
 }
 
 // 获取样式
 const SvgStyle& SvgElement::style() const
 {
+    qDebug() << "style()返回 - mStyle填充：" << mStyle.fill().name()
+             << "描边：" << mStyle.stroke().name()
+             << "宽度：" << mStyle.strokeWidth();
+
     return mStyle;
 }
 

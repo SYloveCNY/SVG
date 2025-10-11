@@ -34,6 +34,12 @@ set(SOURCES
     src/SvgTransform.cpp
     src/SvgDocument.cpp
     src/SvgRenderer.cpp
+    src/SvgElementFactory.cpp
+    src/SvgRect.cpp
+    src/SvgCircle.cpp
+    src/Svgtext.cpp
+    src/SvgGroup.cpp
+    src/SvgViewer.cpp
     src/main.cpp
 )
 
@@ -46,22 +52,29 @@ set(HEADERS
     include/SvgTransform.h
     include/SvgDocument.h
     include/SvgRenderer.h
+    include/SvgElementFactory.h
+    include/SvgRect.h
+    include/SvgCircle.h
+    include/SvgText.h
+    include/SvgGroup.h
+    include/SvgViewer.h
 )
 
 # 创建可执行文件
 qt_add_executable(SvgRenderer
     ${SOURCES}
     ${HEADERS}
-    include/SvgElementFactory.h
-    include/SvgRect.h
-    include/SvgCircle.h
-    include/SvgText.h
-    include/SvgGroup.h
-    src/SvgElementFactory.cpp
-    src/SvgRect.cpp
-    src/SvgCircle.cpp
-    src/Svgtext.cpp
-    src/SvgGroup.cpp
+    include/SvgEllipse.h
+    src/SvgEllipse.cpp
+    include/SvgLine.h
+    src/SvgLine.cpp
+    include/SvgPolyline.h
+    src/SvgPolyline.cpp
+    include/SvgPolygon.h
+    src/SvgPolygon.cpp
+    include/SvgPath.h
+    src/SvgPath.cpp
+
 )
 
 # 包含头文件目录

@@ -11,6 +11,11 @@ public:
     SvgTransform(const QTransform& transform);
     ~SvgTransform();
 
+    // 判断是否为单位矩阵（无变换）
+    bool isIdentity() const {
+        return mTransform.isIdentity();
+    }
+
     void translate(qreal dx, qreal dy);
     void scale(qreal sx, qreal sy);
     void rotate(qreal angle);
