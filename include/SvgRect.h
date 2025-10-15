@@ -4,16 +4,11 @@
 #include "SvgElement.h"
 #include <QRectF>
 
-class SvgRect : public SvgElement
-{
+class SvgRect : public SvgElement {
 public:
-    explicit SvgRect(const QString& id = "");
-    ~SvgRect() override = default;
+    SvgRect() : SvgElement(TypeShape), mX(0), mY(0), mWidth(0), mHeight(0), mRx(0), mRy(0) {}
 
-    void draw(SvgRenderer* renderer) const override;
-    QRectF boundingBox() const override;
-
-    // 属性访问
+    // 原有属性的getter/setter
     qreal x() const { return mX; }
     void setX(qreal x) { mX = x; }
 
@@ -26,11 +21,27 @@ public:
     qreal height() const { return mHeight; }
     void setHeight(qreal height) { mHeight = height; }
 
+    // 圆角属性的getter/setter
+    qreal rx() const { return mRx; }
+    void setRx(qreal rx) { mRx = rx; }
+
+    qreal ry() const { return mRy; }
+    void setRy(qreal ry) { mRy = ry; }
+
+    // 只保留一个draw函数声明
+    void draw(SvgRenderer* renderer) const override;
+
+    QRectF boundingBox() const override {
+        return QRectF(mX, mY, mWidth, mHeight);
+    }
+
 private:
-    qreal mX = 0.0;
-    qreal mY = 0.0;
-    qreal mWidth = 0.0;
-    qreal mHeight = 0.0;
+    qreal mX;
+    qreal mY;
+    qreal mWidth;
+    qreal mHeight;
+    qreal mRx;
+    qreal mRy;
 };
 
 #endif // SVGRECT_H

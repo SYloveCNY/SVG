@@ -53,14 +53,6 @@ void SvgRenderer::popTransform()
     }
 }
 
-QTransform SvgRenderer::currentTransform() const
-{
-    if (mPainter) {
-        return mPainter->transform();
-    }
-    return QTransform();
-}
-
 void SvgRenderer::render(const SvgDocument* document, QPainter* painter, const QRectF& viewport) {
     if (!document || !painter) {
         qDebug() << "render失败：document或painter为空";
@@ -113,7 +105,6 @@ void SvgRenderer::render(const SvgDocument* document, QPainter* painter, const Q
     painter->restore();
     qDebug() << "mRenderer.render调用完成";
 }
-
 
 void SvgRenderer::renderElement(const SvgElement* element, QPainter* painter) {
     if (!element || !painter) return;

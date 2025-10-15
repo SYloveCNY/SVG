@@ -29,6 +29,8 @@ public:
     void reset();
     bool parseTransform(const QString& transformStr);
 
+    void parse(const QString& transformStr);
+
     QTransform toQTransform() const;
     void setTransform(const QTransform& transform);
 

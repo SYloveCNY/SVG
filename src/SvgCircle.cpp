@@ -9,21 +9,31 @@ SvgCircle::SvgCircle(const QString& id)
 
 void SvgCircle::draw(SvgRenderer* renderer) const
 {
-    qDebug() << "绘制圆形：cx=" << mCenter.x() << "cy=" << mCenter.y() << "r=" << mRadius;
-
     if (!renderer || !renderer->painter()) return;
-
     QPainter* painter = renderer->painter();
+
     const SvgStyle& style = this->style();
     style.applyToPainter(painter);
 
-    // 绘制圆形（椭圆的特殊情况，宽高=2*半径）
-    painter->drawEllipse(mCenter, mRadius, mRadius);
+    // 修复：使用正确的成员变量mCenter和mRadius
+    qDebug() << "绘制圆形：中心(" << mCenter.x() << "," << mCenter.y() << "), 半径=" << mRadius
+             << "填充=" << style.fill().name()
+             << "描边=" << style.stroke().name()
+             << "实际描边宽度=" << painter->pen().widthF();
+
+    // 绘制圆形（使用正确的中心和半径）
+    QRectF circleRect(
+        mCenter.x() - mRadius,  // 左上角x
+        mCenter.y() - mRadius,  // 左上角y
+        mRadius * 2,            // 宽
+        mRadius * 2             // 高
+        );
+    painter->drawEllipse(circleRect);
 }
 
 QRectF SvgCircle::boundingBox() const
 {
-    // 圆形边界框：左上角(cx-r, cy-r)，宽高2r
+    // 边界框计算保持不变（已使用正确的mCenter和mRadius）
     return QRectF(
         mCenter.x() - mRadius,
         mCenter.y() - mRadius,

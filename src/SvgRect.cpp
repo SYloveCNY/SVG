@@ -3,32 +3,52 @@
 #include <QPainter>
 #include <QDebug>
 
-SvgRect::SvgRect(const QString& id)
-    : SvgElement(TypeShape, id)
-{}
-
 void SvgRect::draw(SvgRenderer* renderer) const
 {
-    qDebug() << "绘制矩形：x=" << mX << "y=" << mY << "w=" << mWidth << "h=" << mHeight;
+    qDebug () << "[步骤 1] 开始绘制矩形：x=" << mX << "y=" << mY << "w=" << mWidth << "h=" << mHeight;
 
-    if (!renderer || !renderer->painter()) return;
+    // 校验渲染器和画笔有效性
+    if (!renderer || !renderer->painter()) {
+        qWarning () << "[错误] 渲染器为空！";
+        return;
+    }
+    qDebug () << "[步骤 2] 渲染器有效";
 
     QPainter* painter = renderer->painter();
-    // 临时强制设置红色填充（忽略原样式，测试用）
-    painter->setBrush(Qt::red);  // 红色填充
-    painter->setPen(Qt::NoPen);  // 无描边（可选）
+    if (!painter) {
+        qWarning () << "[错误] 画笔为空！";
+        return;
+    }
+    qDebug () << "[步骤 3] 画笔有效";
 
-    // 转换坐标：使用渲染器的当前变换
+    // 保存画笔状态，避免影响后续绘制
+    painter->save();
+    qDebug () << "[步骤 4] 保存画笔状态成功";
+
+    // 1. 处理样式：合并自身样式与父级样式（自身样式优先）
+    SvgStyle parentStyle = renderer->currentStyle();
+    SvgStyle mergedStyle = mStyle;
+    mergedStyle.merge(parentStyle);
+    qDebug () << "[步骤 5] 样式合并成功：填充色 =" << mergedStyle.fill ().name ()<< "描边色 =" << mergedStyle.stroke ().name ()<< "描边宽度 =" << mergedStyle.strokeWidth ();
+
+    // 2. 应用合并后的样式到画笔
+    mergedStyle.applyToPainter(painter);
+    qDebug () << "[步骤 6] 样式合并成功：填充色 =" << mergedStyle.fill ().name ()
+             << "描边色 =" << mergedStyle.stroke ().name ()
+             << "描边宽度 =" << mergedStyle.strokeWidth ();
+
+    // 3. 坐标转换：将逻辑坐标转换为物理屏幕坐标
     QRectF logicRect(mX, mY, mWidth, mHeight);
     QRectF physicalRect = renderer->currentTransform().mapRect(logicRect);
     qDebug() << "矩形物理坐标：" << physicalRect;
+    qDebug () << "[步骤 7] 坐标转换完成：逻辑坐标 =" << logicRect << "物理坐标 =" << physicalRect;
 
-    // 绘制矩形
-    painter->drawRect(QRectF(mX, mY, mWidth, mHeight));
+    // 4. 绘制矩形（使用转换后的物理坐标）
+    painter->drawRect(physicalRect);
+    qDebug () << "[步骤 8] 矩形绘制完成";
+
+    // 恢复画笔状态
+    painter->restore();
+    qDebug () << "[步骤 9] 恢复画笔状态成功";
 }
 
-QRectF SvgRect::boundingBox() const
-{
-    // 矩形的边界框就是自身
-    return QRectF(mX, mY, mWidth, mHeight);
-}

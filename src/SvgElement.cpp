@@ -52,6 +52,7 @@ void SvgElement::setStyle(const SvgStyle& style)
 
     mStyle = style;
 
+    qDebug() << "setStyle - 深拷贝样式，当前mFill：" << mStyle.fill().name();
     qDebug() << "setStyle后 - mStyle填充：" << mStyle.fill().name()
              << "描边：" << mStyle.stroke().name()
              << "宽度：" << mStyle.strokeWidth();

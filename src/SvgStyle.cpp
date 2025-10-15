@@ -9,15 +9,39 @@
 
 SvgStyle::SvgStyle()
     : mPen(new SvgPen()),
-    mBrush(new SvgSolidBrush(Qt::black))
+    mBrush(new SvgSolidBrush(Qt::black)),
+    // 初始化核心样式属性（符合SVG规范默认值）
+    mFill(Qt::black),               // 默认填充黑色
+    mStroke(Qt::transparent),       // 默认描边透明（无描边）
+    mStrokeWidth(-1),               // 默认描边宽度1.0
+    mFontFamily("Arial"),           // 默认字体
+    mFontSize(16.0)                 // 默认字体大小（像素）
 {
+}
+
+SvgStyle::SvgStyle(const SvgStyle& other)
+    : mPen(nullptr),
+    mBrush(nullptr),
+    mFill(other.mFill),
+    mStroke(other.mStroke),
+    mStrokeWidth(other.mStrokeWidth),
+    mFontFamily(other.mFontFamily),
+    mFontSize(other.mFontSize)
+{
+    copyFrom(other); // 深拷贝mPen和mBrush
 }
 
 SvgStyle& SvgStyle::operator=(const SvgStyle& other) {
     if (this != &other) {  // 避免自赋值
+        clear();          // 先删除自身的mPen和mBrush，防止内存泄漏
+        // 复制基础类型成员
         mFill = other.mFill;
         mStroke = other.mStroke;
         mStrokeWidth = other.mStrokeWidth;
+        mFontFamily = other.mFontFamily;
+        mFontSize = other.mFontSize;
+        // 深拷贝mPen和mBrush
+        copyFrom(other);
     }
     return *this;
 }
@@ -43,32 +67,13 @@ void SvgStyle::setBrush(SvgBrush* brush)
     }
 }
 
-void SvgStyle::applyToPainter(QPainter* painter) const
-{
-    if (!painter) return;
-
-    // 打印样式信息（关键调试）
-        qDebug() << "应用样式 - 填充：" << mFill.name()
-        << "描边：" << mStroke.name()
-        << "宽度：" << mStrokeWidth;
-
-    // 设置填充
-    painter->setBrush(mFill);
-
-    // 设置描边
-    QPen pen(mStroke, mStrokeWidth);
-    painter->setPen(pen);
-}
-
 void SvgStyle::parseStyleString(const QString& styleStr)
 {
-    QStringList declarations = styleStr.split(';', Qt::SkipEmptyParts);
-    foreach (const QString& decl, declarations) {
-        QStringList parts = decl.split(':', Qt::SkipEmptyParts);
-        if (parts.size() == 2) {
-            QString name = parts[0].trimmed();
-            QString value = parts[1].trimmed();
-            parseAttribute(name, value);
+    QStringList props = styleStr.split(';');
+    foreach (const QString& prop, props) {
+        QStringList keyValue = prop.split(':');
+        if (keyValue.size() == 2) {
+            parseAttribute(keyValue[0].trimmed(), keyValue[1].trimmed());
         }
     }
 }
@@ -112,23 +117,31 @@ void SvgStyle::parseAttribute(const QString& name, const QString& value)
             mStroke = Qt::transparent;
         }
     } else if (name == "stroke-width") {
-        // 提取纯数字（处理如"3px"、"5.5em"等带单位的情况）
         QString numStr = value.trimmed();
-        QRegularExpression numRegex("(\\d+(\\.\\d+)?)");  // 匹配数字部分
+        QRegularExpression numRegex("(\\d+(\\.\\d+)?)");
         QRegularExpressionMatch match = numRegex.match(numStr);
-
-        if (match.hasMatch()) {  // 检查是否匹配成功
+        if (match.hasMatch()) {  // 替代indexIn() != -1
             bool ok;
-            qreal width = match.captured(1).toDouble(&ok);  // 获取第一个捕获组
+            qreal width = match.captured(1).toDouble(&ok);  // 替代cap(1)
             if (ok && width >= 0) {
                 mStrokeWidth = width;
-                qDebug() << "描边宽度解析成功（去单位）：" << mStrokeWidth;
+                // 新增：检查描边宽度是否远超合理值（如超过100，或后续结合图形尺寸判断）
+                if (mStrokeWidth > 100) {
+                    qWarning() << "警告：描边宽度过大（" << mStrokeWidth << "），可能覆盖填充色，建议检查SVG";
+                    // 可选：限制最大描边宽度（如设为20）
+                    mStrokeWidth = 5;
+                }
+                qDebug() << "描边宽度解析成功：" << mStrokeWidth;
             } else {
-                mStrokeWidth = 1.0;  // 默认1
+                mStrokeWidth = 1.0;
             }
         } else {
             mStrokeWidth = 1.0;
         }
+    } else if (name == "font-family") {
+        mFontFamily = value;
+    } else if (name == "font-size") {
+        mFontSize = value.toDouble();
     }
 }
 
@@ -149,4 +162,35 @@ void SvgStyle::clear()
 
     delete mBrush;
     mBrush = nullptr;
+}
+
+// 核心：合并样式（自身未设置的属性用other的属性覆盖）
+void SvgStyle::merge(const SvgStyle& other) {
+    if (!hasFill() && other.hasFill()) {
+        mFill = other.mFill;
+    }
+    if (!hasStroke() && other.hasStroke()) {
+        mStroke = other.mStroke;
+    }
+    if (!hasStrokeWidth() && other.hasStrokeWidth()) {
+        mStrokeWidth = other.mStrokeWidth;
+    }
+}
+
+// 应用样式到画笔
+void SvgStyle::applyToPainter(QPainter* painter) const {
+    // 设置填充（画刷）
+    if (hasFill()) {
+        painter->setBrush(QBrush(mFill));
+    } else {
+        painter->setBrush(Qt::NoBrush); // 无填充
+    }
+
+    // 设置描边（画笔）
+    if (hasStroke() && hasStrokeWidth()) {
+        QPen pen(mStroke, mStrokeWidth);
+        painter->setPen(pen);
+    } else {
+        painter->setPen(Qt::NoPen); // 无描边
+    }
 }

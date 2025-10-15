@@ -26,14 +26,26 @@ public:
     QRectF viewBox() const;
     void setViewBox(const QRectF& viewBox);
 
-    //计算所有元素的最小包围盒（作为默认viewBox）
-    void calculateDefaultViewBox();
-
     QString title() const;
     void setTitle(const QString& title);
 
     QString description() const;
     void setDescription(const QString& description);
+
+    // 根元素访问
+    SvgElement* rootElement() const { return m_rootElement; }
+
+    // 1. 声明元素计数函数（与.cpp实现严格匹配）
+    int totalElementCount() const;
+
+    // 2. 声明递归计数辅助函数
+    int countElementRecursive(SvgElement* elem) const;
+
+    // 3. 声明边界框扩展函数
+    void expandBboxWithElement(SvgElement* elem, QRectF& bbox) const;
+
+    // 4. 声明默认viewBox计算函数
+    void calculateDefaultViewBox();
 
 private:
     bool parseSvgElement(const QDomElement& domElement);
@@ -41,6 +53,7 @@ private:
 
     QList<SvgElement*> mElements;
     QRectF mViewBox;
+    SvgElement* m_rootElement = nullptr;  // 根元素指针
     QString mTitle;
     QString mDescription;
     bool mIsValid = false;

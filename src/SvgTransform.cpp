@@ -155,3 +155,51 @@ void SvgTransform::parseTransformString(const QString& transformStr)
     // 直接复用已实现的parseTransform逻辑
     parseTransform(transformStr);
 }
+
+void SvgTransform::parse(const QString& transformStr) {
+    // 正则表达式匹配变换命令（如translate、rotate及其参数）
+    QRegularExpression cmdRegex(
+        "(translate|rotate|scale|skewX|skewY)\\s*\\(\\s*([^\\)]*)\\s*\\)"
+        );
+
+    QRegularExpressionMatchIterator it = cmdRegex.globalMatch(transformStr);
+    while (it.hasNext()) {
+        QRegularExpressionMatch match = it.next();
+        QString cmd = match.captured(1); // 变换命令（translate/rotate等）
+        QString params = match.captured(2); // 参数部分（如"100,200"）
+
+        if (cmd == "translate") {
+            // 解析平移参数：translate(x,y) 或 translate(x)
+            QRegularExpression paramRegex("(-?\\d+(\\.\\d*)?)\\s*,?\\s*(-?\\d+(\\.\\d*)?)?");
+            QRegularExpressionMatch paramMatch = paramRegex.match(params);
+            if (paramMatch.hasMatch()) {
+                qreal x = paramMatch.captured(1).toDouble();
+                qreal y = paramMatch.captured(3).toDouble(); // 可选参数，默认0
+                mTransform.translate(x, y);
+            }
+        } else if (cmd == "rotate") {
+            // 解析旋转参数：rotate(angle,x,y) 或 rotate(angle)
+            QRegularExpression paramRegex("(-?\\d+(\\.\\d*)?)\\s*,?\\s*(-?\\d+(\\.\\d*)?)?\\s*,?\\s*(-?\\d+(\\.\\d*)?)?");
+            QRegularExpressionMatch paramMatch = paramRegex.match(params);
+            if (paramMatch.hasMatch()) {
+                qreal angle = paramMatch.captured(1).toDouble();
+                qreal x = paramMatch.captured(3).toDouble(); // 旋转中心x（可选）
+                qreal y = paramMatch.captured(5).toDouble(); // 旋转中心y（可选）
+                if (x != 0 || y != 0) mTransform.translate(x, y);
+                mTransform.rotate(angle);
+                if (x != 0 || y != 0) mTransform.translate(-x, -y);
+            }
+        } else if (cmd == "scale") {
+            // 解析缩放参数：scale(sx,sy) 或 scale(s)
+            QRegularExpression paramRegex("(-?\\d+(\\.\\d*)?)\\s*,?\\s*(-?\\d+(\\.\\d*)?)?");
+            QRegularExpressionMatch paramMatch = paramRegex.match(params);
+            if (paramMatch.hasMatch()) {
+                qreal sx = paramMatch.captured(1).toDouble();
+                qreal sy = paramMatch.captured(3).toDouble(); // 可选，默认等于sx
+                if (sy == 0) sy = sx; // 若未提供sy，使用sx
+                mTransform.scale(sx, sy);
+            }
+        }
+        // 可扩展：添加skewX、skewY等变换的解析
+    }
+}
