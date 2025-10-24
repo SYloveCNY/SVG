@@ -25,7 +25,7 @@ public:
 private:
     QPointF mPosition{0.0, 0.0};
     QString mText;
-    QString mTextAnchor = "start"; // 默认左对齐
+    QString mTextAnchor = "middle";
 };
 
 #endif // SVGTEXT_H
