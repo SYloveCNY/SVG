@@ -9,7 +9,7 @@ void SvgEllipse::draw(SvgRenderer* renderer) const {
 
     // 应用样式（复用SvgStyle）
     const SvgStyle& style = this->style();
-    style.applyToPainter(painter);
+    style.applyToPainter(painter, false);
 
     // 椭圆的绘制：用QRectF表示外接矩形（中心偏移+半径）
     QRectF ellipseRect(mCx - mRx, mCy - mRy, mRx * 2, mRy * 2);

@@ -46,7 +46,6 @@ private:
     SvgStyle mCurrentStyle;   // 当前样式（用于继承）
     // 2. 添加缺失的mCurrentTransform成员变量
     QTransform mCurrentTransform;  // 存储当前变换矩阵
-
     void renderElement(const SvgElement* element, QPainter* painter);
 
 };

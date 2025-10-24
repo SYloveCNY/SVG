@@ -61,6 +61,11 @@ private:
         qreal defaultValue = 0             // 默认值0
         );
     static qreal parseDoubleAttrFromString(const QString& str, const QRectF& viewBox);
+    // 解析DOM元素的尺寸属性（如x、y、width等），返回数值（默认单位为px）
+    static qreal parseDimensionAttr(const QDomElement& elem, const QString& attrName, qreal defaultValue);
+
+    // 解析尺寸字符串（如"250"、"20px"、"1.5em"），提取数值部分（忽略单位）
+    static qreal parseDimension(const QString& dimStr, qreal defaultValue);
 };
 
 #endif // SVGELEMENTFACTORY_H

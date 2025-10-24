@@ -13,9 +13,10 @@ SvgStyle::SvgStyle()
     // 初始化核心样式属性（符合SVG规范默认值）
     mFill(Qt::black),               // 默认填充黑色
     mStroke(Qt::transparent),       // 默认描边透明（无描边）
-    mStrokeWidth(-1),               // 默认描边宽度1.0
+    mStrokeWidth(1.0),              // 默认描边宽度1.0
     mFontFamily("Arial"),           // 默认字体
-    mFontSize(16.0)                 // 默认字体大小（像素）
+    mFontSize(16.0),                 // 默认字体大小（像素）
+    mTextAnchor("start")
 {
 }
 
@@ -142,6 +143,8 @@ void SvgStyle::parseAttribute(const QString& name, const QString& value)
         mFontFamily = value;
     } else if (name == "font-size") {
         mFontSize = value.toDouble();
+    }else if (name == "text-anchor") {
+        mTextAnchor = value.trimmed();
     }
 }
 
@@ -178,19 +181,47 @@ void SvgStyle::merge(const SvgStyle& other) {
 }
 
 // 应用样式到画笔
-void SvgStyle::applyToPainter(QPainter* painter) const {
-    // 设置填充（画刷）
-    if (hasFill()) {
-        painter->setBrush(QBrush(mFill));
-    } else {
-        painter->setBrush(Qt::NoBrush); // 无填充
-    }
+void SvgStyle::applyToPainter(QPainter* painter, bool isText) const {
+    if (isText) {
+        // 文本元素：fill 为填充色，stroke 为轮廓色（需同时支持）
+        // 1. 处理填充（文本本身颜色）
+        QColor fillColor = hasFill() ? mFill : Qt::black; // 默认黑色文本
 
-    // 设置描边（画笔）
-    if (hasStroke() && hasStrokeWidth()) {
-        QPen pen(mStroke, mStrokeWidth);
-        painter->setPen(pen);
+        // 2. 处理描边（文本轮廓）
+        QPen strokePen(Qt::NoPen); // 默认无描边
+        if (hasStroke() && hasStrokeWidth() && mStrokeWidth > 0) {
+            strokePen.setColor(mStroke);
+            strokePen.setWidthF(mStrokeWidth);
+        }
+
+        // 3. 特殊处理：带描边的文本需要先画轮廓再画填充
+        //    （Qt 的 drawText 仅用 pen 绘制，需用路径实现双图层）
+        if (strokePen.style() != Qt::NoPen) {
+            // 保存当前画笔设置
+            painter->save();
+            // 先画描边（用较粗的画笔）
+            painter->setPen(strokePen);
+            // 再画填充（用细画笔覆盖，模拟填充效果）
+            QPen fillPen(fillColor, 0); // 线宽 0 确保填充覆盖描边内侧
+            painter->setPen(fillPen);
+        } else {
+            // 无描边：直接用 fill 颜色绘制
+            painter->setPen(QPen(fillColor, 0));
+        }
+        painter->setBrush(Qt::NoBrush); // 文本无需背景填充
     } else {
-        painter->setPen(Qt::NoPen); // 无描边
+        // 图形元素：fill 为内部填充，stroke 为边缘描边
+        if (hasFill()) {
+            painter->setBrush(QBrush(mFill));
+        } else {
+            painter->setBrush(Qt::NoBrush);
+        }
+
+        if (hasStroke() && hasStrokeWidth() && mStrokeWidth > 0) {
+            QPen pen(mStroke, mStrokeWidth);
+            painter->setPen(pen);
+        } else {
+            painter->setPen(Qt::NoPen);
+        }
     }
 }

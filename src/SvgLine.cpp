@@ -9,7 +9,7 @@ void SvgLine::draw(SvgRenderer* renderer) const {
 
     // 应用样式（填充对直线无效，描边有效）
     const SvgStyle& style = this->style();
-    style.applyToPainter(painter);
+    style.applyToPainter(painter, false);
 
     // 绘制直线
     QLineF line(mX1, mY1, mX2, mY2);

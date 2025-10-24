@@ -32,7 +32,7 @@ void SvgRect::draw(SvgRenderer* renderer) const
     qDebug () << "[步骤 5] 样式合并成功：填充色 =" << mergedStyle.fill ().name ()<< "描边色 =" << mergedStyle.stroke ().name ()<< "描边宽度 =" << mergedStyle.strokeWidth ();
 
     // 2. 应用合并后的样式到画笔
-    mergedStyle.applyToPainter(painter);
+    mergedStyle.applyToPainter(painter, false);
     qDebug () << "[步骤 6] 样式合并成功：填充色 =" << mergedStyle.fill ().name ()
              << "描边色 =" << mergedStyle.stroke ().name ()
              << "描边宽度 =" << mergedStyle.strokeWidth ();

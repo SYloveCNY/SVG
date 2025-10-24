@@ -38,11 +38,13 @@ QRectF SvgRenderer::viewBox() const
     return mViewBox;
 }
 
-void SvgRenderer::pushTransform(const SvgTransform& transform)
-{
+void SvgRenderer::pushTransform(const SvgTransform& transform) {
     if (mPainter) {
+        // 保存当前变换（包含视图缩放+偏移+父元素变换）
         mTransformStack.push(mPainter->transform());
-        mPainter->setTransform(transform.toQTransform(), true);
+        // 组合新变换（当前变换 × 元素自身变换）
+        QTransform newTransform = mPainter->transform() * transform.toQTransform();
+        mPainter->setTransform(newTransform);
     }
 }
 

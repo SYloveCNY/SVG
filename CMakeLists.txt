@@ -37,7 +37,7 @@ set(SOURCES
     src/SvgElementFactory.cpp
     src/SvgRect.cpp
     src/SvgCircle.cpp
-    src/Svgtext.cpp
+    src/SvgText.cpp
     src/SvgGroup.cpp
     src/SvgViewer.cpp
     src/main.cpp

@@ -62,6 +62,7 @@ SvgElement* SvgElementFactory::createElement(const QDomElement& domElement, SvgD
     } else if (tagName == "path") {
         return createPathElement(domElement);
     } else if (tagName == "text") {
+        qDebug() << "解析文本元素，内容：" << domElement.text();
         return createTextElement(domElement);
     } else if (tagName == "g") {
         return createGroupElement(domElement, document);
@@ -170,23 +171,54 @@ SvgElement* SvgElementFactory::createCircleElement(const QDomElement& domElement
 SvgElement* SvgElementFactory::createTextElement(const QDomElement& domElement)
 {
     auto* text = new SvgText();
+    // 1. 解析通用属性（确保包含text-anchor等文本特有属性）
     parseCommonAttributes(text, domElement);
 
-    // 解析文本位置（支持单位）
-    qreal x = parseDoubleAttr(domElement, "x");
-    qreal y = parseDoubleAttr(domElement, "y");
+    // 2. 解析文本位置（支持带单位的属性值，如"250px"）
+    qreal x = parseDimensionAttr(domElement, "x", 0);  // 替换为支持单位的解析函数
+    qreal y = parseDimensionAttr(domElement, "y", 0);
     text->setPosition(QPointF(x, y));
 
-    // 解析文本内容
-    text->setText(domElement.text().trimmed());
+    // 3. 解析文本内容（保留原始内容，避免trim误删有效空格）
+    text->setText(domElement.text());  // 仅在确认需要时trim（如用户明确要求去空格）
 
-    // 计算实际文本边界框（基于字体）
-    const SvgStyle& style = text->style();
-    QFont font(style.fontFamily(), style.fontSize());  // 假设SvgStyle有字体属性
+    // 4. 解析字体属性（完善单位处理和容错）
+    SvgStyle style = text->style();  // 获取通用属性解析后的基础样式
+    // 解析font-family（支持多字体备选，如" Arial, sans-serif"）
+    if (domElement.hasAttribute("font-family")) {
+        QString family = domElement.attribute("font-family").trimmed();
+        // 移除可能的引号（SVG中font-family可能带引号，如font-family="'Arial'"）
+        family.remove(QRegularExpression("^['\"]|['\"]$"));
+        style.parseAttribute("font-family", family);
+    }
+    // 解析font-size（处理单位，如"20px" -> 20）
+    if (domElement.hasAttribute("font-size")) {
+        QString sizeStr = domElement.attribute("font-size");
+        qreal fontSize = parseDimension(sizeStr, 12);  // 自定义函数：提取数值（默认12）
+        style.parseAttribute("font-size", QString::number(fontSize));
+    }
+    // 解析text-anchor（确保覆盖通用属性未处理的情况）
+    if (domElement.hasAttribute("text-anchor")) {
+        style.parseAttribute("text-anchor", domElement.attribute("text-anchor"));
+    }
+    text->setStyle(style);  // 更新样式
+
+    // 5. 计算文本边界框（更精确的基线对齐）
+    QFont font(style.fontFamily().isEmpty() ? "Arial" : style.fontFamily(),
+               style.fontSize() <= 0 ? 12 : style.fontSize());
     QFontMetricsF fm(font);
-    QRectF textBbox = fm.boundingRect(text->text());
-    textBbox.translate(x, y - fm.ascent());  // 调整基线位置
+    // 文本逻辑边界框：x,y为基线位置，需调整到顶部起点
+    QRectF textBbox = fm.boundingRect(QRectF(), Qt::AlignLeft, text->text());
+    textBbox.translate(x - textBbox.left(),  // 对齐x坐标（左起点）
+                       y - fm.ascent());      // 对齐y坐标（基线 -> 顶部）
     text->setBoundingBox(normalizeBbox(textBbox));
+
+    // 调试日志：验证解析结果
+    qDebug() << "创建文本元素：内容='" << text->text()
+             << "'，位置=(" << x << "," << y << ")"
+             << "，字体=" << style.fontFamily()
+             << "，大小=" << style.fontSize()
+             << "，text-anchor=" << style.textAnchor();
 
     return text;
 }
@@ -554,11 +586,124 @@ QPainterPath SvgElementFactory::parsePathData(const QString& d)
             case 'Z': { // 闭合路径
                 path.closeSubpath();
                 currentPos = path.currentPosition();
-                 qDebug() << "解析Z命令：闭合路径，当前位置重置为" << currentPos;
+                qDebug() << "解析Z命令：闭合路径，当前位置重置为" << currentPos;
+                break;
+            }
+            case 'A': {
+                if (params.size() % 7 != 0) {
+                    qWarning() << "A命令参数数量错误（应为7的倍数），实际数量：" << params.size();
+                    break;
+                }
+
+                for (int i = 0; i < params.size(); i += 7) {
+                    qreal rx = params[i];
+                    qreal ry = params[i+1];
+                    qreal xRot = params[i+2];
+                    bool largeArc = params[i+3] != 0;
+                    bool sweep = params[i+4] != 0;  // 1=顺时针，0=逆时针
+                    qreal x = params[i+5];
+                    qreal y = params[i+6];
+
+                    if (isRelative) {
+                        x += currentPos.x();
+                        y += currentPos.y();
+                    }
+
+                    if (rx <= 0 || ry <= 0) {
+                        path.lineTo(x, y);
+                        currentPos = QPointF(x, y);
+                        continue;
+                    }
+
+                    QPointF start = currentPos;
+                    QPointF end(x, y);
+
+                    // ---------------------------
+                    // 关键修正1：精确计算椭圆中心（参考SVG规范）
+                    // ---------------------------
+                    // 1. 将起点和终点转换到以原点为中心的坐标系（考虑旋转）
+                    qreal rad = qDegreesToRadians(xRot);
+                    qreal cosRot = qCos(rad);
+                    qreal sinRot = qSin(rad);
+
+                    // 平移起点和终点到原点（减去中点）
+                    qreal dx = (start.x() - end.x()) / 2.0;
+                    qreal dy = (start.y() - end.y()) / 2.0;
+                    // 应用旋转逆变换（消除x轴旋转的影响）
+                    qreal x1 = cosRot * dx + sinRot * dy;
+                    qreal y1 = -sinRot * dx + cosRot * dy;
+
+                    // 2. 计算椭圆中心（简化版，完整逻辑需解二次方程）
+                    qreal rxSq = rx * rx;
+                    qreal rySq = ry * ry;
+                    qreal x1Sq = x1 * x1;
+                    qreal y1Sq = y1 * y1;
+
+                    // 修正半径（避免数值问题）
+                    qreal scale = x1Sq / rxSq + y1Sq / rySq;
+                    if (scale > 1) {
+                        rx *= qSqrt(scale);
+                        ry *= qSqrt(scale);
+                        rxSq = rx * rx;
+                        rySq = ry * ry;
+                    }
+
+                    // 计算中心在旋转坐标系中的位置
+                    qreal cX = qSqrt(rxSq * rySq - rxSq * y1Sq - rySq * x1Sq) / qSqrt(rxSq * y1Sq + rySq * x1Sq);
+                    qreal cY = 0;
+                    if (largeArc == sweep) {  // 调整中心方向
+                        cX = -cX;
+                    }
+                    cX = cX * rx * y1 / ry;
+                    cY = -cY * ry * x1 / rx;
+
+                    // 3. 将中心转换回原始坐标系
+                    QPointF center;
+                    center.setX((start.x() + end.x()) / 2.0 + cosRot * cX - sinRot * cY);
+                    center.setY((start.y() + end.y()) / 2.0 + sinRot * cX + cosRot * cY);
+
+                    // ---------------------------
+                    // 关键修正2：适配Y轴向下的角度计算
+                    // ---------------------------
+                    // 计算起点和终点相对于中心的向量（Y轴向下，角度需反向）
+                    qreal startVecX = start.x() - center.x();
+                    qreal startVecY = -(start.y() - center.y());  // Y轴反向（关键）
+                    qreal endVecX = end.x() - center.x();
+                    qreal endVecY = -(end.y() - center.y());      // Y轴反向
+
+                    // 计算起始角度和终点角度（弧度转度）
+                    qreal startAngle = qRadiansToDegrees(qAtan2(startVecY, startVecX));
+                    qreal endAngle = qRadiansToDegrees(qAtan2(endVecY, endVecX));
+
+                    // ---------------------------
+                    // 关键修正3：正确映射sweep-flag到角度方向
+                    // ---------------------------
+                    qreal spanAngle = endAngle - startAngle;
+                    // 处理大弧标志
+                    if (largeArc) {
+                        if (spanAngle > 0) spanAngle -= 360;
+                        else spanAngle += 360;
+                    }
+                    // 处理扫描方向（sweep=1→顺时针→spanAngle为负）
+                    if (sweep) {
+                        spanAngle = -qAbs(spanAngle);  // 强制顺时针（负值）
+                    } else {
+                        spanAngle = qAbs(spanAngle);   // 强制逆时针（正值）
+                    }
+
+                    // 绘制椭圆弧
+                    if (path.currentPosition() != start) {
+                        path.moveTo(start);
+                    }
+                    QRectF ellipseRect(center.x() - rx, center.y() - ry, 2*rx, 2*ry);
+                    path.arcTo(ellipseRect, startAngle, spanAngle);
+
+                    currentPos = end;
+                    qDebug() << "解析A命令：开口方向已修正，终点=" << x << "," << y;
+                }
                 break;
             }
 
-            // 可扩展：添加A(椭圆弧)等命令
             default:
                 qDebug() << "未支持的路径命令：" << cmdUpper;
             }
@@ -634,4 +779,28 @@ qreal SvgElementFactory::parseDoubleAttr(const QDomElement& elem, const QString&
 qreal SvgElementFactory::parseDoubleAttrFromString(const QString& str, const QRectF& viewBox) {
     ParsedValue parsed = parseValueWithUnit(str);
     return parsed.valid ? convertToPx(parsed, viewBox) : 0;
+}
+
+// 解析DOM元素的属性值（如elem.attribute("x")）
+qreal SvgElementFactory::parseDimensionAttr(const QDomElement& elem, const QString& attrName, qreal defaultValue) {
+    if (!elem.hasAttribute(attrName)) {
+        return defaultValue; // 属性不存在时返回默认值
+    }
+    QString attrValue = elem.attribute(attrName).trimmed();
+    return parseDimension(attrValue, defaultValue);
+}
+
+// 解析尺寸字符串（提取数值，忽略单位）
+qreal SvgElementFactory::parseDimension(const QString& dimStr, qreal defaultValue) {
+    if (dimStr.isEmpty()) {
+        return defaultValue;
+    }
+    // 正则表达式：匹配开头的数字（支持正负、小数）
+    QRegularExpression regex("^[-+]?\\d+(\\.\\d+)?");
+    QRegularExpressionMatch match = regex.match(dimStr);
+    if (match.hasMatch()) {
+        return match.captured(0).toDouble(); // 提取数值部分并转换为double
+    } else {
+        return defaultValue; // 匹配失败返回默认值
+    }
 }

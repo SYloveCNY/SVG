@@ -13,7 +13,7 @@ void SvgCircle::draw(SvgRenderer* renderer) const
     QPainter* painter = renderer->painter();
 
     const SvgStyle& style = this->style();
-    style.applyToPainter(painter);
+    style.applyToPainter(painter, false);
 
     // 修复：使用正确的成员变量mCenter和mRadius
     qDebug() << "绘制圆形：中心(" << mCenter.x() << "," << mCenter.y() << "), 半径=" << mRadius

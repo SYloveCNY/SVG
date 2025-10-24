@@ -9,7 +9,7 @@ void SvgPolyline::draw(SvgRenderer* renderer) const {
 
     // 应用样式（填充/描边均有效）
     const SvgStyle& style = this->style();
-    style.applyToPainter(painter);
+    style.applyToPainter(painter, false);
 
     // 绘制折线（不闭合）
     painter->drawPolyline(mPoints);

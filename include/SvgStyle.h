@@ -14,6 +14,8 @@ public:
     SvgStyle& operator=(const SvgStyle& other);
     ~SvgStyle();
 
+    QString textAnchor() const { return mTextAnchor; }
+
     QColor fill() const { return mFill; }
     QColor stroke() const { return mStroke; }
     qreal strokeWidth() const { return mStrokeWidth; }
@@ -27,7 +29,7 @@ public:
     SvgBrush* brush() const { return mBrush; }
     void setBrush(SvgBrush* brush);
 
-    void applyToPainter(QPainter* painter) const;
+    void applyToPainter(QPainter* painter, bool isText) const;
 
     void parseStyleString(const QString& styleStr);
     void parseAttribute(const QString& name, const QString& value);
@@ -53,6 +55,7 @@ private:
     qreal mStrokeWidth;   // 描边宽度
     QString mFontFamily;  // 字体名称
     qreal mFontSize;      // 字体大小（像素）
+    QString mTextAnchor;
 
     void copyFrom(const SvgStyle& other);
     void clear();

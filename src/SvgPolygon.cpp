@@ -18,7 +18,7 @@ void SvgPolygon::draw(SvgRenderer* renderer) const {
 
     // 2. 应用样式
     const SvgStyle& style = this->style();
-    style.applyToPainter(painter);
+    style.applyToPainter(painter, false);
     qDebug() << "多边形样式：填充=" << style.fill().name()
              << "描边=" << style.stroke().name() << "宽度=" << style.strokeWidth();
 
